@@ -1,6 +1,6 @@
 <?php
-
-class SmtpMailer {
+class SmtpMailer
+{
     private string $host;
     private int $port;
     private string $username;
@@ -11,31 +11,37 @@ class SmtpMailer {
     private string $body = '';
     private $socket = null;
 
-    public function __construct(string $host, int $port, string $username, string $password) {
-        $this->host = "ssl://{$host}";
+    public function __construct(string $host, int $port, string $username, string $password)
+    {
+        $this->host = $host;
         $this->port = $port;
         $this->username = $username;
         $this->password = $password;
     }
 
-    public function setFrom(string $email): void {
+    public function setFrom(string $email): void
+    {
         $this->fromEmail = $email;
     }
 
-    public function setTo(string $email): void {
+    public function setTo(string $email): void
+    {
         $this->toEmail = $email;
     }
-    
-    public function setSubject(string $subject): void {
+
+    public function setSubject(string $subject): void
+    {
         $this->subject = $subject;
     }
-    
-    public function setBody(string $body): void {
+
+    public function setBody(string $body): void
+    {
         $this->body = $body;
     }
 
-    
-    private function connect(): bool {
+
+    private function connect(): bool
+    {
         $this->socket = @fsockopen($this->host, $this->port, $errno, $errstr, 30);
 
         if (!$this->socket) {
@@ -50,8 +56,9 @@ class SmtpMailer {
 
         return true;
     }
-    
-    private function executeCommand(string $command, int $expectedCode): bool {
+
+    private function executeCommand(string $command, int $expectedCode): bool
+    {
         if (!fwrite($this->socket, $command)) {
             echo "ERROR: Failed to write command to socket.\n";
             return false;
@@ -60,7 +67,8 @@ class SmtpMailer {
     }
 
 
-    private function readResponse(int $expectedCode): bool {
+    private function readResponse(int $expectedCode): bool
+    {
         $response = '';
         while (!feof($this->socket)) {
             $line = fgets($this->socket, 515); // Read a line
@@ -77,7 +85,7 @@ class SmtpMailer {
             return false;
         }
 
-        $code = (int)substr($response, 0, 3);
+        $code = (int) substr($response, 0, 3);
 
         if ($code !== $expectedCode) {
             echo "ERROR: Unexpected response code: {$code}. Full response:\n{$response}\n";
@@ -104,13 +112,33 @@ class SmtpMailer {
     }
 
 
-    private function authenticate(): bool {
+    private function authenticate(): bool
+    {
         // EHLO or HELO command (Extended Hello)
         if (!$this->executeCommand("EHLO " . $_SERVER['SERVER_NAME'] . "\r\n", 250)) {
-             // Fallback to HELO if EHLO fails (less common)
-             if (!$this->executeCommand("HELO " . $_SERVER['SERVER_NAME'] . "\r\n", 250)) {
-                 return false;
-             }
+            // Fallback to HELO if EHLO fails (less common)
+            if (!$this->executeCommand("HELO " . $_SERVER['SERVER_NAME'] . "\r\n", 250)) {
+                return false;
+            }
+        }
+
+        // Start negociation for encryption tls/SSL
+        if(!$this->executeCommand("STARTTLS\r\n", 220)){
+            echo "Error: Failed to initiate STARTTLS.";
+            return false;
+        }
+
+        // Switch to socket connection to encrypt mode
+        if(!stream_socket_enable_crypto($this->socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+            echo "Error: Failed to establish TLS encription";
+            return false;
+        }
+
+        // Re issue EHLO or Helo command after STARTTLS. as per standard
+
+        if(!$this->executeCommand("EHLO" . $_SERVER['SERVER_NAME'] . '\r\n', 250)) {
+            echo 'Error: Connection not establish using STARTTLS.';
+            return false;
         }
 
         // Send AUTH LOGIN command
@@ -132,7 +160,8 @@ class SmtpMailer {
     }
 
 
-    public function send(): bool {
+    public function send(): bool
+    {
         if (empty($this->fromEmail) || empty($this->toEmail) || empty($this->body)) {
             echo "ERROR: Sender, recipient, or body not set.\n";
             return false;
@@ -180,3 +209,23 @@ class SmtpMailer {
 }
 
 
+function sendMail($to, $subject, $message){
+    try {
+        $smtpHost = "smtp.office365.com";
+        $smtpPort = 465;
+        $smtpUsername = "tamimullah.azizi@autismbts.com";
+        $smtpPassword = "WrongPassword";
+
+        $mailer = new SmtpMailer($smtpHost, $smtpPort, $smtpUsername, $smtpPassword);
+
+        $mailer->setFrom("info@autismbts.com", "HMIS Mailer");
+        $mailer->setTo($to);
+        $mailer->setSubject($subject);
+        $mailer->setBody($message);
+
+        $result = $mailer->send();
+        return $result;
+    } catch (Exception $error) {
+        return $error;
+    }
+}
