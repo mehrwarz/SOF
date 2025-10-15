@@ -5,8 +5,8 @@ include "smtpMailer.php";
 
 $smtpHost = 'smtp.office365.com';
 $smtpPort = 587; 
-$smtpUser = 'mehrwarz@live.com';
-$smtpPass = 'rayD4me@'; 
+$smtpUser = 'username@live.com';
+$smtpPass = 'password@'; 
 
 $mailer = new SmtpMailer($smtpHost, $smtpPort, $smtpUser, $smtpPass);
 
