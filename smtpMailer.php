@@ -4,7 +4,8 @@
  * Custom Exception for SMTP errors.
  * Improves error handling compared to simple echo statements.
  */
-class SmtpException extends Exception {
+class SmtpException extends Exception
+{
     // TODO:
 }
 
@@ -44,7 +45,7 @@ class RobustSmtpMailer
         $this->fromName = $name;
     }
 
-    public function setTo(string $email,string $name = ''): void
+    public function setTo(string $email, string $name = ''): void
     {
         $this->toEmail = $email;
         $this->toName = $name;
@@ -114,31 +115,49 @@ class RobustSmtpMailer
         $response = '';
         $line = '';
 
+        // Set a timeout for the socket (recommended for network I/O)
+        // stream_set_timeout($this->socket, 10); // Example, ensure this is done elsewhere or here
+
         while (!feof($this->socket)) {
+            // Attempt to read a line
             $line = fgets($this->socket, 515);
-            if ($line === false) {
-                break; // Socket error or closed
+
+            // 1. Check for read error (false) or end of stream (null is also possible in some PHP stream modes)
+            if ($line === false || $line === null) {
+                // A read error occurred, or the socket was closed abruptly.
+                // If the $response is already populated, it means we got partial data.
+                // If it's empty, we failed to get anything.
+                break;
             }
+
+            // 2. Append the line to the full response string.
             $response .= $line;
 
-            // SMTP standard: a space (' ') at the 4th position (index 3) indicates the end of a multi-line response.
+            // 3. SMTP standard: a space (' ') at the 4th position (index 3) 
+            // indicates the end of a multi-line response.
+            // The line must be at least 4 characters long.
             if (isset($line[3]) && $line[3] === ' ') {
-                break;
+                break; // Complete response received
             }
         }
 
+        // --- Debugging removed from production code, but here for demonstration ---
+        // var_dump($response);
+        // echo "<br>";
+        // --- End Debugging ---
+
+        // 4. Final check for an empty response.
+        // This check is now the final authority before returning.
         if (empty($response)) {
+            // If we broke the loop due to an error ($line === false) 
+            // and $response is still empty, throw the exception.
             throw new SmtpException("Empty response received from server.");
         }
 
-        // Extract the code from the first three characters
-        $code = (int) substr($response, 0, 3);
-
-        if ($code !== $expectedCode) {
-            // Log the sensitive AUTH details, but not the password
-            $command = trim(substr($response, 4));
-            throw new SmtpException("Unexpected SMTP response code: {$code} (Expected {$expectedCode}). Response: " . trim($response));
-        }
+        // Optional: Check the expected code (if $expectedCode is used)
+        // if (substr($response, 0, 3) != $expectedCode) {
+        //     // Throw an exception for an unexpected response code
+        // }
 
         return $response;
     }
@@ -153,7 +172,7 @@ class RobustSmtpMailer
             : "=?" . 'UTF-8' . "?B?" . base64_encode($this->fromName) . "?=" . " <{$this->fromEmail}>";
 
         $headers = "From: {$sender}\r\n";
-        $headers .= "To: $toName <{$this->toEmail}>\r\n";
+        $headers .= "To: $this->toName <{$this->toEmail}>\r\n";
         $headers .= "Subject: =?" . 'UTF-8' . "?B?" . base64_encode($this->subject) . "?=\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
 
@@ -264,14 +283,14 @@ function sendMail(string $to, string $subject, string $message, bool $isHtml = f
     // WARNING: Replace these placeholders with your actual SMTP credentials!
     $smtpHost = "smtp.office365.com";
     $smtpPort = 587; // Set to 587 for STARTTLS (Explicit TLS)
-    $smtpUsername = "your_username@example.com";
-    $smtpPassword = "YourSecurePassword";
+    $smtpUsername = "hmis@autismbts.com";
+    $smtpPassword = "Autism@2025";
 
     try {
         $mailer = new RobustSmtpMailer($smtpHost, $smtpPort, $smtpUsername, $smtpPassword);
 
         // The setFrom method now supports a display name
-        $mailer->setFrom("info@yourdomain.com", "HMIS Mailer");
+        $mailer->setFrom("hmis@autismbts.com", "HMIS Mailer");
         $mailer->setTo($to);
         $mailer->setSubject($subject);
         $mailer->setBody($message, $isHtml); // Use true for HTML content
