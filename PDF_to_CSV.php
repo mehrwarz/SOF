@@ -4,8 +4,8 @@ require 'vendor/autoload.php';
 use Smalot\PdfParser\Parser;
 
 // ---------- CONFIG ----------
-$pdfPath  = __DIR__ . '/input.pdf';   // <-- your PDF file
-$csvPath  = __DIR__ . '/output.csv';  // <-- where CSV will be saved
+$pdfPath  = __DIR__ . '/input.pdf';   // <-- your PDF file, You can use the temprary uploaded file address here too. 
+$csvPath  = __DIR__ . '/output.csv';  // <-- where CSV will be saved 
 $password = null;                     // set if PDF is password-protected
 // --------------------------------
 
@@ -72,14 +72,14 @@ foreach ($pages as $pageNumber => $page) {
 }
 
 // ------------------------------------------------------------------
-// 4. Write CSV
+// 4. Write CSV  Or you can echo the data whout csv creating. Do what ever you want.
 // ------------------------------------------------------------------
 if (empty($allRows)) {
     die("No table data detected in the PDF.\n");
 }
-
 $fp = fopen($csvPath, 'w');
 foreach ($allRows as $row) {
+    echo $row; // If you want to see the result on screen also.
     fputcsv($fp, $row);
 }
 fclose($fp);
